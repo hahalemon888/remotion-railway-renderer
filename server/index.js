@@ -44,7 +44,7 @@ app.post('/render', async (req, res) => {
     // 1. 打包 Remotion 项目
     console.log('📦 正在打包项目...');
     const bundleLocation = await bundle({
-      entryPoint: path.join(__dirname, '../src/Root.tsx'),
+      entryPoint: path.join(__dirname, '../src/index.ts'),
       webpackOverride: (config) => config,
     });
 
@@ -115,7 +115,7 @@ app.get('/compositions', async (req, res) => {
     console.log('📋 获取组合列表...');
     
     const bundleLocation = await bundle({
-      entryPoint: path.join(__dirname, '../src/Root.tsx'),
+      entryPoint: path.join(__dirname, '../src/index.ts'),
       webpackOverride: (config) => config,
     });
 
