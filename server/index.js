@@ -20,6 +20,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// 静态文件服务 - 提供输出视频的下载
+app.use('/output', express.static(path.join(__dirname, '../output')));
+
 // 健康检查端点
 app.get('/health', (req, res) => {
   res.json({
@@ -113,6 +116,7 @@ app.post('/render', async (req, res) => {
         height: composition.height,
         fps: composition.fps,
         durationInFrames: composition.durationInFrames,
+        downloadUrl: `/output/${outputFileName}`,
       }
     });
 
@@ -169,7 +173,8 @@ app.get('/', (req, res) => {
     endpoints: {
       'GET /health': '健康检查',
       'GET /compositions': '获取可用的视频组合列表',
-      'POST /render': '渲染视频 - 参数: { compositionId, inputProps, outputFileName }'
+      'POST /render': '渲染视频 - 参数: { compositionId, inputProps, outputFileName }',
+      'GET /output/:filename': '下载渲染好的视频文件'
     },
     example: {
       curl: `curl -X POST https://your-app.railway.app/render \\
