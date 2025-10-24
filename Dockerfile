@@ -1,12 +1,15 @@
 # 使用官方 Node.js 镜像
 FROM node:18-bullseye
 
-# 安装 Chrome 依赖
+# 安装 Chromium 和必要的依赖
 RUN apt-get update && apt-get install -y \
+    chromium \
+    chromium-sandbox \
     wget \
     gnupg \
     ca-certificates \
     fonts-liberation \
+    fonts-noto-color-emoji \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -25,7 +28,12 @@ RUN apt-get update && apt-get install -y \
     libxkbcommon0 \
     libxrandr2 \
     xdg-utils \
+    --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
+
+# 设置 Chromium 可执行路径
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # 设置工作目录
 WORKDIR /app

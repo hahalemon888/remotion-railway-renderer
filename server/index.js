@@ -71,6 +71,10 @@ app.post('/render', async (req, res) => {
       codec: 'h264',
       outputLocation: outputPath,
       inputProps,
+      // 使用系统 Chromium
+      chromiumOptions: {
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      },
       onProgress: ({ progress }) => {
         console.log(`渲染进度: ${(progress * 100).toFixed(1)}%`);
       },
