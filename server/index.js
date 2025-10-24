@@ -7,6 +7,7 @@ import { renderMedia, selectComposition } from '@remotion/renderer';
 import { createRequire } from 'module';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -15,6 +16,36 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ========== 任务存储系统 ==========
+// 存储所有渲染任务的状态
+const jobs = new Map();
+
+// 生成唯一任务 ID
+function generateTaskId() {
+  return crypto.randomUUID();
+}
+
+// 清理旧任务（24小时后自动清理）
+function cleanupOldJobs() {
+  const now = Date.now();
+  const MAX_AGE = 24 * 60 * 60 * 1000; // 24小时
+  
+  for (const [taskId, job] of jobs.entries()) {
+    if (now - job.createdAt > MAX_AGE) {
+      console.log(`🧹 清理旧任务: ${taskId}`);
+      jobs.delete(taskId);
+      
+      // 如果有输出文件，也删除
+      if (job.data?.outputPath && fs.existsSync(job.data.outputPath)) {
+        fs.unlinkSync(job.data.outputPath);
+      }
+    }
+  }
+}
+
+// 每小时清理一次
+setInterval(cleanupOldJobs, 60 * 60 * 1000);
 
 // 中间件
 app.use(cors());
@@ -32,27 +63,34 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 渲染端点
-app.post('/render', async (req, res) => {
+// ========== 异步渲染函数 ==========
+async function performRender(taskId, compositionId, inputProps, outputFileName) {
   const startTime = Date.now();
-  console.log('📹 收到渲染请求:', req.body);
-
+  
   try {
-    const {
-      compositionId = 'MyVideo',
-      inputProps = {},
-      outputFileName = `video-${Date.now()}.mp4`
-    } = req.body;
+    // 更新状态为处理中
+    jobs.set(taskId, {
+      ...jobs.get(taskId),
+      status: 'processing',
+      message: '正在打包项目...',
+      progress: 0
+    });
 
     // 1. 打包 Remotion 项目
-    console.log('📦 正在打包项目...');
+    console.log(`[${taskId}] 📦 正在打包项目...`);
     const bundleLocation = await bundle({
       entryPoint: path.join(__dirname, '../src/index.ts'),
       webpackOverride: (config) => config,
     });
 
     // 2. 获取组合信息
-    console.log('🎬 获取视频组合信息...');
+    console.log(`[${taskId}] 🎬 获取视频组合信息...`);
+    jobs.set(taskId, {
+      ...jobs.get(taskId),
+      message: '正在获取视频信息...',
+      progress: 10
+    });
+    
     const composition = await selectComposition({
       serveUrl: bundleLocation,
       id: compositionId,
@@ -67,17 +105,21 @@ app.post('/render', async (req, res) => {
     }
 
     // 4. 渲染视频
-    console.log('🎥 开始渲染视频...');
+    console.log(`[${taskId}] 🎥 开始渲染视频...`);
+    jobs.set(taskId, {
+      ...jobs.get(taskId),
+      message: '正在渲染视频...',
+      progress: 15
+    });
+    
     await renderMedia({
       composition,
       serveUrl: bundleLocation,
       codec: 'h264',
       outputLocation: outputPath,
       inputProps,
-      // 使用系统 Chromium
       chromiumOptions: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        // 降低内存使用
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -89,24 +131,30 @@ app.post('/render', async (req, res) => {
           '--disable-gpu'
         ],
       },
-      // 降低并发数以减少内存使用
       concurrency: 1,
-      // 使用较低的质量设置
       crf: 23,
-      // 禁用音频预处理以节省内存
       enforceAudioTrack: false,
       onProgress: ({ progress }) => {
-        console.log(`渲染进度: ${(progress * 100).toFixed(1)}%`);
+        const percentage = Math.round(15 + progress * 80); // 15% - 95%
+        console.log(`[${taskId}] 渲染进度: ${percentage}%`);
+        
+        jobs.set(taskId, {
+          ...jobs.get(taskId),
+          progress: percentage,
+          message: `正在渲染视频 ${percentage}%...`
+        });
       },
     });
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`✅ 渲染完成! 用时: ${duration}秒`);
+    console.log(`[${taskId}] ✅ 渲染完成! 用时: ${duration}秒`);
 
-    // 5. 返回结果
-    res.json({
-      success: true,
-      message: '视频渲染成功',
+    // 更新为完成状态
+    jobs.set(taskId, {
+      ...jobs.get(taskId),
+      status: 'completed',
+      progress: 100,
+      message: '渲染完成',
       data: {
         outputPath,
         outputFileName,
@@ -117,17 +165,90 @@ app.post('/render', async (req, res) => {
         fps: composition.fps,
         durationInFrames: composition.durationInFrames,
         downloadUrl: `/output/${outputFileName}`,
-      }
+      },
+      completedAt: Date.now()
     });
 
   } catch (error) {
-    console.error('❌ 渲染错误:', error);
-    res.status(500).json({
-      success: false,
+    console.error(`[${taskId}] ❌ 渲染错误:`, error);
+    
+    // 更新为失败状态
+    jobs.set(taskId, {
+      ...jobs.get(taskId),
+      status: 'failed',
+      message: '渲染失败',
       error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      failedAt: Date.now()
     });
   }
+}
+
+// ========== 提交渲染任务端点（异步） ==========
+app.post('/render', async (req, res) => {
+  console.log('📹 收到渲染请求:', req.body);
+
+  try {
+    const {
+      compositionId = 'MyVideo',
+      inputProps = {},
+      outputFileName = `video-${Date.now()}.mp4`
+    } = req.body;
+
+    // 生成任务 ID
+    const taskId = generateTaskId();
+    console.log(`✨ 创建任务: ${taskId}`);
+
+    // 初始化任务状态
+    jobs.set(taskId, {
+      taskId,
+      status: 'queued',
+      message: '任务已创建，等待处理...',
+      progress: 0,
+      compositionId,
+      inputProps,
+      outputFileName,
+      createdAt: Date.now()
+    });
+
+    // 立即返回任务 ID
+    res.json({
+      success: true,
+      message: '渲染任务已创建',
+      taskId,
+      status: 'queued'
+    });
+
+    // 后台异步执行渲染
+    performRender(taskId, compositionId, inputProps, outputFileName);
+
+  } catch (error) {
+    console.error('❌ 创建任务错误:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ========== 查询任务状态端点 ==========
+app.get('/render/:taskId', (req, res) => {
+  const { taskId } = req.params;
+  const job = jobs.get(taskId);
+
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: '任务不存在',
+      message: `找不到任务 ID: ${taskId}`
+    });
+  }
+
+  // 返回任务信息
+  res.json({
+    success: true,
+    ...job
+  });
 });
 
 // 获取可用的组合列表
@@ -165,19 +286,53 @@ app.get('/compositions', async (req, res) => {
   }
 });
 
+// 获取所有任务列表（可选，用于调试）
+app.get('/jobs', (req, res) => {
+  const allJobs = Array.from(jobs.values()).map(job => ({
+    taskId: job.taskId,
+    status: job.status,
+    progress: job.progress,
+    message: job.message,
+    compositionId: job.compositionId,
+    createdAt: job.createdAt,
+    completedAt: job.completedAt,
+    failedAt: job.failedAt
+  }));
+
+  res.json({
+    success: true,
+    total: allJobs.length,
+    jobs: allJobs
+  });
+});
+
 // 根路径 - API 文档
 app.get('/', (req, res) => {
   res.json({
-    name: 'Remotion Railway Renderer API',
-    version: '1.0.0',
+    name: 'Remotion Railway Renderer API (异步模式)',
+    version: '2.0.0',
+    mode: 'async',
     endpoints: {
       'GET /health': '健康检查',
       'GET /compositions': '获取可用的视频组合列表',
-      'POST /render': '渲染视频 - 参数: { compositionId, inputProps, outputFileName }',
+      'POST /render': '提交渲染任务（异步）- 参数: { compositionId, inputProps, outputFileName }',
+      'GET /render/:taskId': '查询任务状态和进度',
+      'GET /jobs': '获取所有任务列表（调试用）',
       'GET /output/:filename': '下载渲染好的视频文件'
     },
+    workflow: [
+      '1. POST /render → 返回 { taskId }',
+      '2. GET /render/:taskId → 轮询查询状态',
+      '3. status === "completed" → 使用 downloadUrl 下载视频'
+    ],
+    statusCodes: {
+      'queued': '任务已创建，等待处理',
+      'processing': '正在渲染中',
+      'completed': '渲染完成',
+      'failed': '渲染失败'
+    },
     example: {
-      curl: `curl -X POST https://your-app.railway.app/render \\
+      step1_submit: `curl -X POST https://your-app.railway.app/render \\
   -H "Content-Type: application/json" \\
   -d '{
     "compositionId": "MyVideo",
@@ -186,7 +341,9 @@ app.get('/', (req, res) => {
       "subtitle": "这是由 Railway 渲染的视频"
     },
     "outputFileName": "my-video.mp4"
-  }'`
+  }'`,
+      step2_check: `curl https://your-app.railway.app/render/YOUR_TASK_ID`,
+      step3_download: `curl -O https://your-app.railway.app/output/my-video.mp4`
     }
   });
 });
