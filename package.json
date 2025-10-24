@@ -1,6 +1,7 @@
 {
   "name": "remotion-railway-renderer",
   "version": "1.0.0",
+  "type": "module",
   "description": "Remotion video renderer deployed on Railway for n8n integration",
   "scripts": {
     "start": "node server/index.js",
