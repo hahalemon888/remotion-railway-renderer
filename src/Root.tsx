@@ -17,6 +17,19 @@ export const RemotionRoot: React.FC = () => {
           subtitle: 'Rendered on Railway'
         }}
       />
+      {/* 轻量级测试视频 - 适合低内存环境 */}
+      <Composition
+        id="TestVideo"
+        component={MyVideo}
+        durationInFrames={60}
+        fps={15}
+        width={1280}
+        height={720}
+        defaultProps={{
+          title: 'Test Video',
+          subtitle: 'Low Memory Test'
+        }}
+      />
     </>
   );
 };

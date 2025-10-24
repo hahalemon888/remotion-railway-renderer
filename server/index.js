@@ -74,7 +74,24 @@ app.post('/render', async (req, res) => {
       // 使用系统 Chromium
       chromiumOptions: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        // 降低内存使用
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu'
+        ],
       },
+      // 降低并发数以减少内存使用
+      concurrency: 1,
+      // 使用较低的质量设置
+      crf: 23,
+      // 禁用音频预处理以节省内存
+      enforceAudioTrack: false,
       onProgress: ({ progress }) => {
         console.log(`渲染进度: ${(progress * 100).toFixed(1)}%`);
       },
