@@ -134,7 +134,8 @@ async function performRender(taskId, compositionId, inputProps, outputFileName, 
       }),
       
       // 超时设置（用于加载慢速网络资源）
-      timeoutInMilliseconds: 120000,  // 120秒超时
+      // 按 15 个视频片段 × 40秒/片段 = 600秒，留有余量设置为 900秒
+      timeoutInMilliseconds: 900000,  // 900秒超时（15分钟）
       
       chromiumOptions: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
