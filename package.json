@@ -1,33 +1,26 @@
 {
-  "name": "remotion-railway-renderer",
+  "name": "remotion-video-server",
   "version": "1.0.0",
-  "type": "module",
-  "description": "Remotion video renderer deployed on Railway for n8n integration",
+  "description": "Remotion video rendering server",
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
-    "remotion:preview": "remotion preview"
+    "build": "remotion bundle"
   },
   "dependencies": {
+    "@remotion/bundler": "^4.0.365",
+    "@remotion/cli": "^4.0.365",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "@remotion/bundler": "^4.0.0",
-    "@remotion/renderer": "^4.0.0",
-    "@remotion/cli": "^4.0.0",
+    "remotion": "^4.0.365",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "remotion": "^4.0.0"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.45",
-    "nodemon": "^3.0.2",
-    "typescript": "^5.3.3"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "nodemon": "^3.0.1",
+    "typescript": "^5.0.0"
   }
 }
-

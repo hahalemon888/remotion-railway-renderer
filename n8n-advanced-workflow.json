@@ -1,0 +1,192 @@
+{
+  "name": "Remotion视频渲染-动态内容",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "video-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Webhook触发器",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "video-render-webhook",
+      "notes": "POST 请求示例：\n{\n  \"title\": \"客户名称\",\n  \"subtitle\": \"订单信息\"\n}"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://remotion-railway-renderer-production.up.railway.app/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"compositionId\": \"{{ $json.compositionId || 'TestVideo' }}\",\n  \"inputProps\": {\n    \"title\": \"{{ $json.title }}\",\n    \"subtitle\": \"{{ $json.subtitle }}\"\n  },\n  \"outputFileName\": \"video-{{ $now.format('YYYY-MM-DD-HHmmss') }}.mp4\"\n}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "http-request-1",
+      "name": "渲染视频",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-1",
+      "name": "检查渲染状态",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://remotion-railway-renderer-production.up.railway.app{{ $json.data.downloadUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "http-request-2",
+      "name": "下载视频",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 200],
+      "notes": "成功：下载视频文件"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"视频渲染成功\",\n  \"videoUrl\": \"https://remotion-railway-renderer-production.up.railway.app{{ $('渲染视频').item.json.data.downloadUrl }}\",\n  \"filename\": \"{{ $('渲染视频').item.json.data.outputFileName }}\",\n  \"duration\": \"{{ $('渲染视频').item.json.data.duration }}\"\n}",
+        "options": {}
+      },
+      "id": "webhook-response-1",
+      "name": "返回成功响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"message\": \"视频渲染失败\",\n  \"error\": \"{{ $json.message || '未知错误' }}\"\n}",
+        "responseCode": 500,
+        "options": {}
+      },
+      "id": "webhook-response-2",
+      "name": "返回错误响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 400],
+      "notes": "失败：返回错误信息"
+    }
+  ],
+  "connections": {
+    "Webhook触发器": {
+      "main": [
+        [
+          {
+            "node": "渲染视频",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "渲染视频": {
+      "main": [
+        [
+          {
+            "node": "检查渲染状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查渲染状态": {
+      "main": [
+        [
+          {
+            "node": "下载视频",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "返回错误响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "下载视频": {
+      "main": [
+        [
+          {
+            "node": "返回成功响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-10-24T06:00:00.000Z",
+      "updatedAt": "2025-10-24T06:00:00.000Z",
+      "id": "1",
+      "name": "视频渲染"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-24T06:00:00.000Z",
+  "versionId": "1"
+}
+
+
+
+

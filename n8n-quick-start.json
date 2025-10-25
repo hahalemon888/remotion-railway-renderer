@@ -1,0 +1,96 @@
+{
+  "name": "Remotion视频渲染-快速开始",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-1",
+      "name": "开始",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://remotion-railway-renderer-production.up.railway.app/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"compositionId\": \"TestVideo\",\n  \"inputProps\": {\n    \"title\": \"我的第一个视频\",\n    \"subtitle\": \"由 n8n 自动生成\"\n  },\n  \"outputFileName\": \"n8n-test-video.mp4\"\n}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "http-request-1",
+      "name": "1️⃣ 渲染视频",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300],
+      "notes": "调用 Remotion API 渲染视频\n等待时间：30-60秒"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://remotion-railway-renderer-production.up.railway.app{{$json.data.downloadUrl}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "http-request-2",
+      "name": "2️⃣ 下载视频文件",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300],
+      "notes": "下载渲染完成的视频文件"
+    }
+  ],
+  "connections": {
+    "开始": {
+      "main": [
+        [
+          {
+            "node": "1️⃣ 渲染视频",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1️⃣ 渲染视频": {
+      "main": [
+        [
+          {
+            "node": "2️⃣ 下载视频文件",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-24T06:00:00.000Z",
+  "versionId": "1"
+}
+
+
+
+
