@@ -64,7 +64,7 @@ app.get('/health', (req, res) => {
 });
 
 // ========== 异步渲染函数 ==========
-async function performRender(taskId, compositionId, inputProps, outputFileName) {
+async function performRender(taskId, compositionId, inputProps, outputFileName, renderOptions = {}) {
   const startTime = Date.now();
   
   try {
@@ -97,6 +97,15 @@ async function performRender(taskId, compositionId, inputProps, outputFileName) 
       inputProps,
     });
 
+    // 处理分辨率缩放（用于节省内存）
+    const scale = renderOptions.scale || 1.0;
+    const targetWidth = Math.round(composition.width * scale);
+    const targetHeight = Math.round(composition.height * scale);
+    
+    if (scale !== 1.0) {
+      console.log(`[${taskId}] 📐 分辨率缩放: ${composition.width}x${composition.height} → ${targetWidth}x${targetHeight} (${Math.round(scale * 100)}%)`);
+    }
+
     // 3. 准备输出路径
     const outputPath = path.join(__dirname, '../output', outputFileName);
     const outputDir = path.dirname(outputPath);
@@ -118,6 +127,12 @@ async function performRender(taskId, compositionId, inputProps, outputFileName) 
       codec: 'h264',
       outputLocation: outputPath,
       inputProps,
+      
+      // 应用分辨率缩放
+      ...(scale !== 1.0 && {
+        scale,
+      }),
+      
       chromiumOptions: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: [
@@ -140,7 +155,7 @@ async function performRender(taskId, compositionId, inputProps, outputFileName) 
       numberOfGifLoops: null,
       
       // 视频质量设置（降低以节省内存）
-      crf: 28,  // 提高 CRF 值（降低质量但减少内存）
+      crf: renderOptions.crf || 28,  // 提高 CRF 值（降低质量但减少内存）
       pixelFormat: 'yuv420p',
       
       // FFmpeg 优化参数
@@ -184,8 +199,11 @@ async function performRender(taskId, compositionId, inputProps, outputFileName) 
         outputFileName,
         compositionId,
         duration: `${duration}秒`,
-        width: composition.width,
-        height: composition.height,
+        width: targetWidth,
+        height: targetHeight,
+        originalWidth: composition.width,
+        originalHeight: composition.height,
+        scale: scale,
         fps: composition.fps,
         durationInFrames: composition.durationInFrames,
         downloadUrl: `/output/${outputFileName}`,
@@ -216,12 +234,22 @@ app.post('/render', async (req, res) => {
     const {
       compositionId = 'MyVideo',
       inputProps = {},
-      outputFileName = `video-${Date.now()}.mp4`
+      outputFileName = `video-${Date.now()}.mp4`,
+      renderOptions = {}
     } = req.body;
 
     // 生成任务 ID
     const taskId = generateTaskId();
     console.log(`✨ 创建任务: ${taskId}`);
+    
+    // 渲染选项（用于内存优化）
+    const options = {
+      scale: renderOptions.scale || 0.5,  // 默认 50% 分辨率（节省内存）
+      crf: renderOptions.crf || 30,  // 默认 CRF 30（降低质量节省内存）
+      ...renderOptions
+    };
+    
+    console.log(`📐 渲染选项: scale=${options.scale}, crf=${options.crf}`);
 
     // 初始化任务状态
     jobs.set(taskId, {
@@ -232,6 +260,7 @@ app.post('/render', async (req, res) => {
       compositionId,
       inputProps,
       outputFileName,
+      renderOptions: options,
       createdAt: Date.now()
     });
 
@@ -240,11 +269,12 @@ app.post('/render', async (req, res) => {
       success: true,
       message: '渲染任务已创建',
       taskId,
-      status: 'queued'
+      status: 'queued',
+      renderOptions: options
     });
 
     // 后台异步执行渲染
-    performRender(taskId, compositionId, inputProps, outputFileName);
+    performRender(taskId, compositionId, inputProps, outputFileName, options);
 
   } catch (error) {
     console.error('❌ 创建任务错误:', error);
@@ -333,16 +363,25 @@ app.get('/jobs', (req, res) => {
 // 根路径 - API 文档
 app.get('/', (req, res) => {
   res.json({
-    name: 'Remotion Railway Renderer API (异步模式)',
-    version: '2.0.0',
+    name: 'Remotion Railway Renderer API (异步模式 + 内存优化)',
+    version: '2.1.0',
     mode: 'async',
     endpoints: {
       'GET /health': '健康检查',
       'GET /compositions': '获取可用的视频组合列表',
-      'POST /render': '提交渲染任务（异步）- 参数: { compositionId, inputProps, outputFileName }',
+      'POST /render': '提交渲染任务（异步）- 参数: { compositionId, inputProps, outputFileName, renderOptions }',
       'GET /render/:taskId': '查询任务状态和进度',
       'GET /jobs': '获取所有任务列表（调试用）',
       'GET /output/:filename': '下载渲染好的视频文件'
+    },
+    renderOptions: {
+      scale: '分辨率缩放比例 (0.1-1.0)，默认 0.5 (50%)，用于节省内存',
+      crf: 'CRF 质量参数 (0-51)，默认 30，值越高文件越小但质量越低',
+      presets: {
+        'low-memory': { scale: 0.5, crf: 30, description: '低内存模式 (默认) - 适合 512MB RAM' },
+        'balanced': { scale: 0.75, crf: 25, description: '平衡模式 - 需要 1GB+ RAM' },
+        'high-quality': { scale: 1.0, crf: 20, description: '高质量模式 - 需要 2GB+ RAM' }
+      }
     },
     workflow: [
       '1. POST /render → 返回 { taskId }',
@@ -356,7 +395,7 @@ app.get('/', (req, res) => {
       'failed': '渲染失败'
     },
     example: {
-      step1_submit: `curl -X POST https://your-app.railway.app/render \\
+      step1_submit_default: `curl -X POST https://your-app.railway.app/render \\
   -H "Content-Type: application/json" \\
   -d '{
     "compositionId": "MyVideo",
@@ -365,6 +404,17 @@ app.get('/', (req, res) => {
       "subtitle": "这是由 Railway 渲染的视频"
     },
     "outputFileName": "my-video.mp4"
+  }'`,
+      step1_submit_custom: `curl -X POST https://your-app.railway.app/render \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "compositionId": "MyVideo",
+    "inputProps": { "title": "测试" },
+    "outputFileName": "my-video.mp4",
+    "renderOptions": {
+      "scale": 0.75,
+      "crf": 25
+    }
   }'`,
       step2_check: `curl https://your-app.railway.app/render/YOUR_TASK_ID`,
       step3_download: `curl -O https://your-app.railway.app/output/my-video.mp4`

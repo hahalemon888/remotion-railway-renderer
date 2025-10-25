@@ -1,0 +1,196 @@
+{
+  "name": "Remotion 渲染器 (低内存优化版)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "webhook-trigger",
+      "name": "Webhook 触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "remotion-render"
+    },
+    {
+      "parameters": {
+        "url": "=https://your-railway-app.railway.app/render",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "compositionId",
+              "value": "={{ $json.compositionId || 'MyVideo' }}"
+            },
+            {
+              "name": "inputProps",
+              "value": "={{ $json.inputProps }}"
+            },
+            {
+              "name": "outputFileName",
+              "value": "={{ $json.outputFileName || 'video-' + Date.now() + '.mp4' }}"
+            },
+            {
+              "name": "renderOptions",
+              "value": "={{ { scale: $json.scale || 0.5, crf: $json.crf || 30 } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "submit-render",
+      "name": "提交渲染任务",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "wait-5s",
+      "name": "等待 5 秒",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "webhookId": "wait-webhook"
+    },
+    {
+      "parameters": {
+        "url": "=https://your-railway-app.railway.app/render/{{ $json.taskId }}",
+        "method": "GET",
+        "options": {}
+      },
+      "id": "check-status",
+      "name": "检查渲染状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "completed"
+            }
+          ]
+        }
+      },
+      "id": "check-completed",
+      "name": "是否完成？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://your-railway-app.railway.app{{ $json.data.downloadUrl }}",
+        "method": "GET",
+        "responseFormat": "file",
+        "options": {}
+      },
+      "id": "download-video",
+      "name": "下载视频",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "wait-10s-retry",
+      "name": "等待 10 秒重试",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1340, 400],
+      "webhookId": "wait-retry"
+    }
+  ],
+  "connections": {
+    "Webhook 触发": {
+      "main": [
+        [
+          {
+            "node": "提交渲染任务",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "提交渲染任务": {
+      "main": [
+        [
+          {
+            "node": "等待 5 秒",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "等待 5 秒": {
+      "main": [
+        [
+          {
+            "node": "检查渲染状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查渲染状态": {
+      "main": [
+        [
+          {
+            "node": "是否完成？",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否完成？": {
+      "main": [
+        [
+          {
+            "node": "下载视频",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "等待 10 秒重试",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "等待 10 秒重试": {
+      "main": [
+        [
+          {
+            "node": "检查渲染状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-25T00:00:00.000Z",
+  "versionId": "1"
+}
+
