@@ -1,13 +1,19 @@
-# 使用官方 Node.js 镜像
-FROM node:18-bullseye
+# 使用 Ubuntu 22.04 基础镜像（包含 GLIBC 2.35）
+FROM ubuntu:22.04
 
-# 安装 Chromium 和必要的依赖
+# 设置非交互式安装
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装 Node.js 18.x 和必要的依赖
 RUN apt-get update && apt-get install -y \
-    chromium \
-    chromium-sandbox \
+    curl \
     wget \
     gnupg \
     ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get install -y \
+    chromium-browser \
     fonts-liberation \
     fonts-noto-color-emoji \
     libasound2 \
@@ -31,9 +37,9 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# 设置 Chromium 可执行路径
+# 设置 Chromium 可执行路径（Ubuntu 22.04 中是 chromium-browser）
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # 设置工作目录
 WORKDIR /app
