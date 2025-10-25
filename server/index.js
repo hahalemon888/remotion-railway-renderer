@@ -133,12 +133,19 @@ async function performRender(taskId, compositionId, inputProps, outputFileName, 
         scale,
       }),
       
-      // 超时设置（用于加载慢速网络资源）
-      // 按 15 个视频片段 × 40秒/片段 = 600秒，留有余量设置为 900秒
-      timeoutInMilliseconds: 900000,  // 900秒超时（15分钟）
+      // ========== 🔥 所有超时配置（修复 "no data for 20 seconds" 错误）==========
+      // 1. 整体渲染超时: 30分钟（极限）
+      timeoutInMilliseconds: 1800000,
+      
+      // 2. 单个资源下载超时: 180秒（3分钟）
+      delayRenderTimeoutInMilliseconds: 180000,
+      
+      // 3. 视频缓存大小: 512MB（避免内存溢出）
+      offthreadVideoCacheSizeInBytes: 512 * 1024 * 1024,
       
       chromiumOptions: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        // 4. Chromium 启动参数 - 增加超时和网络配置
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -149,9 +156,18 @@ async function performRender(taskId, compositionId, inputProps, outputFileName, 
           '--single-process',
           '--disable-gpu',
           '--disable-software-rasterizer',
-          '--disable-extensions'
+          '--disable-extensions',
+          // 网络优化
+          '--disable-features=IsolateOrigins,site-per-process',
+          '--disable-blink-features=AutomationControlled',
+          // 增加网络超时容忍度
+          '--timeout=180000',
+          '--disable-hang-monitor',
         ],
+        // 5. Puppeteer 默认超时: 180秒
+        timeout: 180000,
       },
+      
       // 内存优化设置
       concurrency: 1,  // 单线程渲染
       frameRange: null,  // 渲染全部帧
