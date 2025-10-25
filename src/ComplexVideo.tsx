@@ -3,6 +3,8 @@ import {
   AbsoluteFill,
   Audio,
   Img,
+  Video,
+  OffthreadVideo,
   Sequence,
   useCurrentFrame,
   useVideoConfig,
@@ -30,6 +32,13 @@ interface ComplexVideoProps {
   episodeNumber?: number;
   segments?: Segment[];
 }
+
+// 判断 URL 是图片还是视频
+const isVideoUrl = (url: string): boolean => {
+  const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+  const lowerUrl = url.toLowerCase();
+  return videoExtensions.some(ext => lowerUrl.includes(ext));
+};
 
 export const ComplexVideo: React.FC<ComplexVideoProps> = ({
   backgroundMusic = [],
@@ -77,14 +86,28 @@ export const ComplexVideo: React.FC<ComplexVideoProps> = ({
               {/* 背景图片/视频 */}
               {segment.backgroundImages &&
                 segment.backgroundImages.length > 0 && (
-                  <Img
-                    src={segment.backgroundImages[0]}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    }}
-                  />
+                  <>
+                    {isVideoUrl(segment.backgroundImages[0]) ? (
+                      <OffthreadVideo
+                        src={segment.backgroundImages[0]}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                        muted
+                      />
+                    ) : (
+                      <Img
+                        src={segment.backgroundImages[0]}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    )}
+                  </>
                 )}
 
               {/* 字幕 */}
