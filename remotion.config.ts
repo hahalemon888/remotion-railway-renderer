@@ -5,12 +5,12 @@ Config.setVideoImageFormat('jpeg');
 Config.setOverwriteOutput(true);
 Config.setCodec('h264');
 
-// ========== 🔥 全局超时配置（所有地方生效）==========
-// 1. 整体渲染超时: 30分钟
+// ========== 🔥 全局超时配置（方案B：平衡性能，适合10-15片段）==========
+// 1. 整体渲染超时: 30分钟（支持10-15个片段）
 Config.setTimeoutInMilliseconds(1800000);
 
-// 2. 单个资源下载超时: 180秒（修复 "no data for 20 seconds" 错误）
-Config.setDelayRenderTimeoutInMilliseconds(180000);
+// 2. 单个资源下载超时: 240秒（4分钟，支持大文件下载）
+Config.setDelayRenderTimeoutInMilliseconds(240000);
 
 // 3. Chromium 启动超时: 90秒
 Config.setChromiumOpenGlRenderer('egl');

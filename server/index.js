@@ -133,12 +133,12 @@ async function performRender(taskId, compositionId, inputProps, outputFileName, 
         scale,
       }),
       
-      // ========== 🔥 所有超时配置（修复 "no data for 20 seconds" 错误）==========
-      // 1. 整体渲染超时: 30分钟（极限）
+      // ========== 🔥 所有超时配置（方案B：平衡性能，支持10-15片段）==========
+      // 1. 整体渲染超时: 30分钟（支持10-15个片段）
       timeoutInMilliseconds: 1800000,
       
-      // 2. 单个资源下载超时: 180秒（3分钟）
-      delayRenderTimeoutInMilliseconds: 180000,
+      // 2. 单个资源下载超时: 240秒（4分钟，支持大文件）
+      delayRenderTimeoutInMilliseconds: 240000,
       
       // 3. 视频缓存大小: 512MB（避免内存溢出）
       offthreadVideoCacheSizeInBytes: 512 * 1024 * 1024,
@@ -161,11 +161,11 @@ async function performRender(taskId, compositionId, inputProps, outputFileName, 
           '--disable-features=IsolateOrigins,site-per-process',
           '--disable-blink-features=AutomationControlled',
           // 增加网络超时容忍度
-          '--timeout=180000',
+          '--timeout=240000',
           '--disable-hang-monitor',
         ],
-        // 5. Puppeteer 默认超时: 180秒
-        timeout: 180000,
+        // 5. Puppeteer 默认超时: 240秒（4分钟）
+        timeout: 240000,
       },
       
       // 内存优化设置
