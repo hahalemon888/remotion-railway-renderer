@@ -133,6 +133,9 @@ async function performRender(taskId, compositionId, inputProps, outputFileName, 
         scale,
       }),
       
+      // 超时设置（用于加载慢速网络资源）
+      timeoutInMilliseconds: 120000,  // 120秒超时
+      
       chromiumOptions: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: [
