@@ -66,8 +66,9 @@ export const ComplexVideo: React.FC<ComplexVideoProps> = ({
     );
   }
 
-  // 计算每个 segment 的时长（平均分配）
-  const framesPerSegment = Math.floor(durationInFrames / segments.length);
+  // 每个片段固定150帧（5秒 @ 30fps）
+  // 注意：总时长由 Root.tsx 的 calculateMetadata 动态计算
+  const framesPerSegment = 150;
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#000000' }}>

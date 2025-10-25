@@ -18,6 +18,19 @@ export const RemotionRoot: React.FC = () => {
           backgroundMusic: [],
           segments: []
         }}
+        calculateMetadata={({ props }) => {
+          // 动态计算总时长：每个片段150帧（5秒 @ 30fps）
+          const segmentCount = props.segments?.length || 1;
+          const framesPerSegment = 150;
+          const totalDuration = segmentCount * framesPerSegment;
+          
+          return {
+            durationInFrames: totalDuration,
+            fps: 30,
+            width: 1080,
+            height: 1920,
+          };
+        }}
       />
       {/* 轻量级测试视频 - 适合低内存环境 */}
       <Composition
