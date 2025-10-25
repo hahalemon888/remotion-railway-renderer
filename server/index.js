@@ -128,11 +128,35 @@ async function performRender(taskId, compositionId, inputProps, outputFileName) 
           '--no-first-run',
           '--no-zygote',
           '--single-process',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions'
         ],
       },
-      concurrency: 1,
-      crf: 23,
+      // 内存优化设置
+      concurrency: 1,  // 单线程渲染
+      frameRange: null,  // 渲染全部帧
+      everyNthFrame: 1,  // 每帧都渲染
+      numberOfGifLoops: null,
+      
+      // 视频质量设置（降低以节省内存）
+      crf: 28,  // 提高 CRF 值（降低质量但减少内存）
+      pixelFormat: 'yuv420p',
+      
+      // FFmpeg 优化参数
+      ffmpegOverride: ({ args }) => {
+        return [
+          ...args.filter(arg => 
+            !arg.includes('-preset') && 
+            !arg.includes('-threads')
+          ),
+          '-preset', 'ultrafast',  // 最快编码速度
+          '-threads', '2',  // 限制线程数
+          '-bufsize', '1M',  // 限制缓冲区大小
+          '-maxrate', '2M',  // 限制最大比特率
+        ];
+      },
+      
       enforceAudioTrack: false,
       onProgress: ({ progress }) => {
         const percentage = Math.round(15 + progress * 80); // 15% - 95%

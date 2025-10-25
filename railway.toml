@@ -1,0 +1,16 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# 内存和资源限制
+[deploy.resources]
+# Railway 免费套餐限制为 512MB，但可以请求更多
+# 如果渲染失败，可能需要升级到付费套餐获得更多内存
+

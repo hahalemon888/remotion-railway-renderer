@@ -39,7 +39,9 @@ RUN apt-get update && apt-get install -y \
 
 # 设置 Chromium 可执行路径（Ubuntu 22.04 中是 chromium-browser）
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    NODE_OPTIONS="--max-old-space-size=1024" \
+    REMOTION_CONCURRENCY=1
 
 # 设置工作目录
 WORKDIR /app
