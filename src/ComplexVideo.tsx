@@ -96,6 +96,7 @@ export const ComplexVideo: React.FC<ComplexVideoProps> = ({
                           objectFit: 'cover',
                         }}
                         muted
+                        delayRenderTimeoutInMilliseconds={120000}
                       />
                     ) : (
                       <Img
@@ -105,6 +106,7 @@ export const ComplexVideo: React.FC<ComplexVideoProps> = ({
                           height: '100%',
                           objectFit: 'cover',
                         }}
+                        delayRenderTimeoutInMilliseconds={120000}
                       />
                     )}
                   </>
@@ -159,7 +161,10 @@ export const ComplexVideo: React.FC<ComplexVideoProps> = ({
               {segment.speaker_audio &&
                 segment.speaker_audio.length > 0 &&
                 segment.speaker_audio[0] && (
-                  <Audio src={segment.speaker_audio[0]} />
+                  <Audio 
+                    src={segment.speaker_audio[0]} 
+                    delayRenderTimeoutInMilliseconds={120000}
+                  />
                 )}
             </AbsoluteFill>
           </Sequence>
@@ -168,7 +173,11 @@ export const ComplexVideo: React.FC<ComplexVideoProps> = ({
 
       {/* 背景音乐 */}
       {backgroundMusic && backgroundMusic.length > 0 && backgroundMusic[0] && (
-        <Audio src={backgroundMusic[0]} volume={0.3} />
+        <Audio 
+          src={backgroundMusic[0]} 
+          volume={0.3}
+          delayRenderTimeoutInMilliseconds={120000}
+        />
       )}
     </AbsoluteFill>
   );
