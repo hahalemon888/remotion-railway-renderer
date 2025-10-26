@@ -1,0 +1,276 @@
+{
+  "name": "Remotion 10片段渲染测试 (极限内存模式)",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "手动触发",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://your-app.railway.app/render",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "compositionId",
+              "value": "MyVideo"
+            },
+            {
+              "name": "inputProps",
+              "value": "={\"title\": \"10片段测试\", \"subtitle\": \"极限内存模式\"}"
+            },
+            {
+              "name": "outputFileName",
+              "value": "test-10-segments.mp4"
+            },
+            {
+              "name": "renderOptions",
+              "value": "={\"scale\": 0.2, \"crf\": 40}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "提交渲染任务",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "name": "等待5秒",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "webhookId": "wait-5s"
+    },
+    {
+      "parameters": {
+        "url": "=https://your-app.railway.app/render/{{$json[\"taskId\"]}}",
+        "options": {}
+      },
+      "name": "查询任务状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"status\"]}}",
+              "operation": "equals",
+              "value2": "completed"
+            }
+          ]
+        }
+      },
+      "name": "检查是否完成",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$json[\"downloadUrl\"]}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "下载视频",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "name": "等待10秒后重试",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [850, 400],
+      "webhookId": "wait-retry"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"retryCount\"] || 0}}",
+              "operation": "smaller",
+              "value2": 60
+            }
+          ]
+        }
+      },
+      "name": "检查重试次数",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { ...items[0].json, retryCount: (items[0].json.retryCount || 0) + 1 };"
+      },
+      "name": "增加重试计数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "message": "=渲染超时（10分钟），任务 ID: {{$json[\"taskId\"]}}"
+      },
+      "name": "渲染超时警告",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  taskId: items[0].json.taskId,\n  status: items[0].json.status,\n  progress: items[0].json.progress,\n  downloadUrl: items[0].json.downloadUrl,\n  fileName: items[0].json.outputFileName,\n  message: `✅ 渲染完成！\\n📹 视频: ${items[0].json.outputFileName}\\n🔗 下载: ${items[0].json.downloadUrl}`\n};"
+      },
+      "name": "格式化输出",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    }
+  ],
+  "connections": {
+    "手动触发": {
+      "main": [
+        [
+          {
+            "node": "提交渲染任务",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "提交渲染任务": {
+      "main": [
+        [
+          {
+            "node": "等待5秒",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "等待5秒": {
+      "main": [
+        [
+          {
+            "node": "查询任务状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查询任务状态": {
+      "main": [
+        [
+          {
+            "node": "检查是否完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查是否完成": {
+      "main": [
+        [
+          {
+            "node": "下载视频",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "等待10秒后重试",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "下载视频": {
+      "main": [
+        [
+          {
+            "node": "格式化输出",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "等待10秒后重试": {
+      "main": [
+        [
+          {
+            "node": "检查重试次数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查重试次数": {
+      "main": [
+        [
+          {
+            "node": "增加重试计数",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "渲染超时警告",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "增加重试计数": {
+      "main": [
+        [
+          {
+            "node": "查询任务状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "meta": {
+    "instanceId": "your-instance-id"
+  }
+}
+

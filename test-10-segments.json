@@ -1,0 +1,13 @@
+{
+  "compositionId": "MyVideo",
+  "inputProps": {
+    "title": "10个片段测试",
+    "subtitle": "极限内存模式 - Railway 512MB"
+  },
+  "outputFileName": "test-10-segments.mp4",
+  "renderOptions": {
+    "scale": 0.2,
+    "crf": 40
+  }
+}
+

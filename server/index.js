@@ -133,19 +133,19 @@ async function performRender(taskId, compositionId, inputProps, outputFileName, 
         scale,
       }),
       
-      // ========== 🔥 所有超时配置（方案B：平衡性能，支持10-15片段）==========
+      // ========== 🔥 所有超时配置（Railway 免费版优化：512MB RAM）==========
       // 1. 整体渲染超时: 30分钟（支持10-15个片段）
       timeoutInMilliseconds: 1800000,
       
       // 2. 单个资源下载超时: 240秒（4分钟，支持大文件）
       delayRenderTimeoutInMilliseconds: 240000,
       
-      // 3. 视频缓存大小: 512MB（避免内存溢出）
-      offthreadVideoCacheSizeInBytes: 512 * 1024 * 1024,
+      // 3. 视频缓存大小: 32MB（Railway 免费版内存限制）
+      offthreadVideoCacheSizeInBytes: 32 * 1024 * 1024,
       
       chromiumOptions: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        // 4. Chromium 启动参数 - 增加超时和网络配置
+        // 4. Chromium 启动参数 - Railway 免费版内存优化
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -157,12 +157,21 @@ async function performRender(taskId, compositionId, inputProps, outputFileName, 
           '--disable-gpu',
           '--disable-software-rasterizer',
           '--disable-extensions',
-          // 网络优化
           '--disable-features=IsolateOrigins,site-per-process',
           '--disable-blink-features=AutomationControlled',
-          // 增加网络超时容忍度
           '--timeout=240000',
           '--disable-hang-monitor',
+          // 极限内存优化（Railway 512MB）
+          '--js-flags=--max-old-space-size=256',  // JS 堆最大 256MB
+          '--disable-background-networking',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-breakpad',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+          '--disable-ipc-flooding-protection',
+          '--disable-renderer-backgrounding',
+          '--memory-pressure-off',
         ],
         // 5. Puppeteer 默认超时: 240秒（4分钟）
         timeout: 240000,
@@ -262,10 +271,10 @@ app.post('/render', async (req, res) => {
     const taskId = generateTaskId();
     console.log(`✨ 创建任务: ${taskId}`);
     
-    // 渲染选项（用于内存优化）
+    // 渲染选项（用于内存优化 - Railway 免费版 512MB）
     const options = {
-      scale: renderOptions.scale || 0.5,  // 默认 50% 分辨率（节省内存）
-      crf: renderOptions.crf || 30,  // 默认 CRF 30（降低质量节省内存）
+      scale: renderOptions.scale || 0.2,  // 默认 20% 分辨率（极度节省内存）
+      crf: renderOptions.crf || 40,  // 默认 CRF 40（最低质量，最少内存）
       ...renderOptions
     };
     
@@ -383,9 +392,10 @@ app.get('/jobs', (req, res) => {
 // 根路径 - API 文档
 app.get('/', (req, res) => {
   res.json({
-    name: 'Remotion Railway Renderer API (异步模式 + 内存优化)',
-    version: '2.1.0',
+    name: 'Remotion Railway Renderer API (异步模式 + Railway 免费版优化)',
+    version: '2.2.0',
     mode: 'async',
+    memory: 'Railway Free Tier (512MB)',
     endpoints: {
       'GET /health': '健康检查',
       'GET /compositions': '获取可用的视频组合列表',
@@ -395,12 +405,12 @@ app.get('/', (req, res) => {
       'GET /output/:filename': '下载渲染好的视频文件'
     },
     renderOptions: {
-      scale: '分辨率缩放比例 (0.1-1.0)，默认 0.5 (50%)，用于节省内存',
-      crf: 'CRF 质量参数 (0-51)，默认 30，值越高文件越小但质量越低',
+      scale: '分辨率缩放比例 (0.1-1.0)，默认 0.2 (20%)，用于节省内存',
+      crf: 'CRF 质量参数 (0-51)，默认 40，值越高文件越小但质量越低',
       presets: {
-        'low-memory': { scale: 0.5, crf: 30, description: '低内存模式 (默认) - 适合 512MB RAM' },
-        'balanced': { scale: 0.75, crf: 25, description: '平衡模式 - 需要 1GB+ RAM' },
-        'high-quality': { scale: 1.0, crf: 20, description: '高质量模式 - 需要 2GB+ RAM' }
+        'extreme-low-memory': { scale: 0.2, crf: 40, description: '极限内存模式 (默认) - Railway 免费版 512MB，支持 10+ 片段' },
+        'ultra-low-memory': { scale: 0.25, crf: 38, description: '超低内存模式 - 适合 1GB RAM，支持 5-8 片段' },
+        'low-memory': { scale: 0.3, crf: 35, description: '低内存模式 - 需要 2GB+ RAM' }
       }
     },
     workflow: [

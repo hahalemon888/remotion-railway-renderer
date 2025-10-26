@@ -21,6 +21,31 @@
 - 不想折腾 AWS 配置
 - 视频时长 < 5分钟
 
+## 🧪 快速测试（10个片段工作流）
+
+### 一键测试命令
+```bash
+# 1. 提交渲染任务（10个片段，极限内存模式）
+curl -X POST https://your-app.railway.app/render \
+  -H "Content-Type: application/json" \
+  -d @test-10-segments.json
+
+# 2. 查询任务状态（每5秒查询一次）
+curl https://your-app.railway.app/render/{taskId}
+
+# 3. 下载视频
+curl -O https://your-app.railway.app/output/test-10-segments.mp4
+```
+
+### 内存配置说明
+- **默认配置**: `scale=0.2, crf=40` - 支持 10+ 片段
+- **Node.js 内存**: 256MB
+- **Chromium 内存**: 256MB
+- **视频缓存**: 32MB
+- **详细配置**: 查看 `MEMORY-OPTIMIZATION.md`
+
+---
+
 ## 🚀 部署到 Railway（5分钟完成）
 
 ### 步骤 1: 准备代码
