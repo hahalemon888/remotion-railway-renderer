@@ -272,9 +272,10 @@ app.post('/render', async (req, res) => {
     console.log(`✨ 创建任务: ${taskId}`);
     
     // 渲染选项（用于内存优化 - Railway 免费版 512MB）
+    // 测试优化版本：提高画质，仍适合 10 个片段渲染
     const options = {
-      scale: renderOptions.scale || 0.2,  // 默认 20% 分辨率（极度节省内存）
-      crf: renderOptions.crf || 40,  // 默认 CRF 40（最低质量，最少内存）
+      scale: renderOptions.scale || 0.25,  // 默认 25% 分辨率（平衡画质和内存）
+      crf: renderOptions.crf || 35,  // 默认 CRF 35（可接受的质量）
       ...renderOptions
     };
     
@@ -405,12 +406,12 @@ app.get('/', (req, res) => {
       'GET /output/:filename': '下载渲染好的视频文件'
     },
     renderOptions: {
-      scale: '分辨率缩放比例 (0.1-1.0)，默认 0.2 (20%)，用于节省内存',
-      crf: 'CRF 质量参数 (0-51)，默认 40，值越高文件越小但质量越低',
+      scale: '分辨率缩放比例 (0.1-1.0)，默认 0.25 (25%)，用于节省内存',
+      crf: 'CRF 质量参数 (0-51)，默认 35，值越高文件越小但质量越低',
       presets: {
-        'extreme-low-memory': { scale: 0.2, crf: 40, description: '极限内存模式 (默认) - Railway 免费版 512MB，支持 10+ 片段' },
-        'ultra-low-memory': { scale: 0.25, crf: 38, description: '超低内存模式 - 适合 1GB RAM，支持 5-8 片段' },
-        'low-memory': { scale: 0.3, crf: 35, description: '低内存模式 - 需要 2GB+ RAM' }
+        'test-balanced': { scale: 0.25, crf: 35, description: '测试平衡模式 (默认) - Railway 免费版 512MB，支持 10 片段，画质提升 40%' },
+        'extreme-low-memory': { scale: 0.2, crf: 40, description: '极限内存模式 - 最低画质，支持 15+ 片段' },
+        'low-memory': { scale: 0.3, crf: 32, description: '低内存模式 - 更高画质，支持 5-8 片段' }
       }
     },
     workflow: [

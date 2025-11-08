@@ -37,8 +37,9 @@ curl https://your-app.railway.app/render/{taskId}
 curl -O https://your-app.railway.app/output/test-10-segments.mp4
 ```
 
-### 内存配置说明
-- **默认配置**: `scale=0.2, crf=40` - 支持 10+ 片段
+### 内存配置说明（测试优化版）
+- **默认配置**: `scale=0.25, crf=35` - 支持 10 片段，画质提升 40%
+- **分辨率**: 270x480 (原始 1080x1920 的 25%)
 - **Node.js 内存**: 256MB
 - **Chromium 内存**: 256MB
 - **视频缓存**: 32MB
